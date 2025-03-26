@@ -4,7 +4,10 @@
 #include <ncurses.h>
 #include <assert.h>
 
-#define DB_LOCATION "/home/groman/.notedb"
+#define MAXENTRIES MAXY/4
+#ifndef DB_LOCATION
+#define DB_LOCATION ".notedb"
+#endif
 
 struct Entry
 {
@@ -110,7 +113,23 @@ void printLine(int id, int offset)
     mvprintw(4+offset*4, 0, "%s", ctime(&(db[id].time)));
 }
 
-int printFound(char title[16], int length, int* showEntries)
+void printFound(int* showEntries, int offset, int length)
+{
+    clrtobot();
+    if(length>0)
+    {
+        for (int i = offset; (i < MAXENTRIES+offset)&&(i<length); ++i)
+        {
+            printLine(showEntries[i], i-offset);
+        }
+    }
+    else
+    {
+        mvprintw(3, 0, "No results found");
+    }
+}
+
+int getFound(char title[16], int length, int* showEntries)
 {
     clrtobot();
     int found = 1;
@@ -129,18 +148,13 @@ int printFound(char title[16], int length, int* showEntries)
                 }
                 if (found)
                 {
-                    printLine(i, qtyFound);
-                    if (qtyFound>0) showEntries = realloc(showEntries, qtyFound+1);
+                    if (qtyFound>0) showEntries = realloc(showEntries, sizeof(int)*(qtyFound+1));
                     showEntries[qtyFound] = i;
                     ++qtyFound;
                 }
                 found = 1;
             }
         }
-    }
-    if (qtyFound==0) 
-    {
-        mvprintw(3, 0, "No results found");
     }
     return qtyFound;
 }
@@ -268,11 +282,6 @@ void browseEntry(int id, char searchText[16], int length)
     mvprintw(0,0,"Enter the search name: %s", searchText);
 }
 
-void onExit(void)
-{
-    rewriteDb();
-    fclose(dbFile);
-}
 
 int main()
 {
@@ -284,13 +293,14 @@ int main()
     init_pair(2, COLOR_WHITE, COLOR_BLACK);
 
     keypad(stdscr, 1);
-    initDb(DB_LOCATION);
+    initDb();
 
     printw("Enter the search name: ");
     int ch;
     char title[16];
     int currLength = 0;
     int lenFound = 0, currSelected = 0; // currSelected - current selected
+    int currOffset = 0; // quantity of entries scrolled; from what entry to start displaying
     int* entryIds = malloc(4);
 
     while(ch=getch())
@@ -300,13 +310,13 @@ int main()
             case 'a'...'z':
             case 'A'...'Z':
             case '0'...'9':
-            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<15) { title[currLength] = ch; ++currLength; lenFound = printFound(title, currLength, entryIds); highlightOption(0); } break;
-            case 263: if (currLength>0) { mvprintw(0, 22+currLength, " "); title[currLength] = 0; --currLength; title[currLength] = '\0'; if (currLength>0){lenFound = printFound(title, currLength, entryIds); highlightOption(0); } break; }
-            case 258: { if (currSelected<lenFound-1) { unhighlightOption(currSelected); highlightOption(++currSelected); } break; } 
-            case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } break; }
-            case 331: { newOptionEntry(title, currLength); printFound(title, currLength, entryIds); highlightOption(0); break; }
-            case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title, currLength); lenFound = printFound(title, currLength, entryIds); highlightOption(currSelected); } break; }
-            case 330: { onExit; endwin(); return 0; }
+            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<15) { currSelected = 0; currOffset = 0; title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break;
+            case 263: if (currLength>1) { mvprintw(0, 22+currLength, " "); title[currLength] = '\0'; --currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } else if (currLength==1) { --currLength; clrtobot(); } break;
+            case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
+            case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
+            case 331: { newOptionEntry(title, currLength); getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
+            case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title, currLength); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } break; }
+            case 330: { endwin(); return 0; }
             default:  break;
         }
         move(0, 23+currLength);
