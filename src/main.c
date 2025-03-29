@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <ncurses.h>
@@ -371,13 +370,13 @@ int main()
             case '0'...'9':
             case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<15) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break;
             case 263: if (currLength>1) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } else if (currLength==1) { title[currLength] = '\0'; --currLength; mvprintw(0, 23, " "); clrtobot(); } break;
-            case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
-            case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
-            case 331: { newOptionEntry(title, currLength); getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
+            case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
+            case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
+            case 331: { newOptionEntry(title, currLength); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
             case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } break; }
             case 330: { endwin(); return 0; }
             case 4: { removeOption(entryIds[currSelected]); currSelected = 0; currOffset = 0; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
-            case 5: { editEntry(currSelected, currLength); break; }
+            case 5: { editEntry(currSelected, currLength); currSelected = 0; currOffset = 0; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
             default:  break;
         }
         move(0, 23+currLength);
