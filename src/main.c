@@ -3,6 +3,7 @@
 #include <time.h>
 #include <ncurses.h>
 #include <assert.h>
+#include <string.h>
 
 #define MAXENTRIES MAXY/4
 #ifndef DB_LOCATION
@@ -98,6 +99,15 @@ void initDb()
     }
 }
 
+int contains(int* array, int length, int element)
+{
+    for (int i = 0; i < length; ++i)
+    {
+        if (array[i]==element) return 1;
+    }
+    return 0;
+}
+
 void printLine(int id, int offset)
 {
     for (int i = 0; i<MAXX-2; ++i)
@@ -129,24 +139,39 @@ void printFound(int* showEntries, int offset, int length)
     }
 }
 
+char switchCases(char input)
+{
+    if (input>='a'&&input<='z')
+    {
+        return input-32;
+    }
+    else if (input>='A'&&input<='Z')
+    {
+        return input+32;
+    }
+    else
+    {
+        return input;
+    }
+}
+
 int getFound(char title[16], int length, int* showEntries)
 {
     clrtobot();
-    int found = 1;
-    int qtyFound = 0;
+    int found = 1, qtyFound = 0;
     free(showEntries);
     showEntries = malloc(4);
     for (int i = 0; i < entryCnt; ++i)
     {
         for (int x = 0; x < 16; ++x)
         {
-            if (db[i].title[x]==title[0])
+            if (db[i].title[x]==title[0]||switchCases(db[i].title[x])==title[0])
             {
                 for (int o = 0; o < length; ++o)
                 {
-                    if (db[i].title[x+o]!=title[o]) found = 0;
+                    if ((db[i].title[x+o]!=title[o])&&(switchCases(db[i].title[x+o])!=title[o])) found = 0;
                 }
-                if (found)
+                if (found&&!contains(showEntries, qtyFound, i))
                 {
                     if (qtyFound>0) showEntries = realloc(showEntries, sizeof(int)*(qtyFound+1));
                     showEntries[qtyFound] = i;
@@ -251,7 +276,7 @@ void newOptionEntry(char title[16], int posToReturn)
             case 'a'...'z':
             case 'A'...'Z':
             case '0'...'9':
-            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currIndex<128) { entry[currIndex] = ch; ++currIndex; } break;
+            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currIndex<128) { mvprintw(3, 16+currIndex, "%c", ch); entry[currIndex] = ch; ++currIndex; } break;
             case 263: if (currIndex>0) { entry[--currIndex] = ' '; mvprintw(3, 16+currIndex, " "); } break;
         }
         move(3, 16+currIndex);
@@ -261,9 +286,33 @@ void newOptionEntry(char title[16], int posToReturn)
     move(0, 23+posToReturn);
 }
 
-void browseEntry(int id, char searchText[16], int length)
+void editEntry(int id, int posToReturn)
 {
-    noecho();
+    clrtobot();
+    mvprintw(3,0, "Edit the text: %s", db[id].entry);
+    int currLength = strlen(db[id].entry)-1;
+    int ch;
+    while((ch=getch())!=10) //enter
+    {
+        switch (ch)
+        {
+            case 'a'...'z':
+            case 'A'...'Z':
+            case '0'...'9':
+            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<128) { mvprintw(3, 16+currLength, "%c", ch); db[id].entry[++currLength] = ch; } break;
+            case 263: if (currLength>0) { db[id].entry[currLength--] = ' '; mvprintw(3, 16+currLength, " "); } break;
+        }
+        move(3, 16+currLength);
+    }
+    db[id].entry[currLength+1] = '\0';
+    db[id].time = time(NULL);
+    rewriteDb();
+    move(0, 23+posToReturn);
+    clrtobot();
+}
+
+void browseEntry(int id, char searchText[16])
+{
     clear();
     for (int i = 0; i<MAXX-2; ++i)
     {
@@ -278,8 +327,17 @@ void browseEntry(int id, char searchText[16], int length)
     mvprintw(2, 0, "%s", ctime(&(db[id].time)));
     while(getch()!=263);
     clear();
-    echo();
     mvprintw(0,0,"Enter the search name: %s", searchText);
+}
+
+void removeOption(int id)
+{
+    while (id<entryCnt)
+    {
+        db[id] = db[++id];
+    }
+    db = realloc(db, (--entryCnt)*sizeof(struct Entry));
+    rewriteDb();
 }
 
 
@@ -292,6 +350,7 @@ int main()
     init_pair(1, COLOR_BLACK, COLOR_WHITE);
     init_pair(2, COLOR_WHITE, COLOR_BLACK);
 
+    noecho();
     keypad(stdscr, 1);
     initDb();
 
@@ -310,13 +369,15 @@ int main()
             case 'a'...'z':
             case 'A'...'Z':
             case '0'...'9':
-            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<15) { currSelected = 0; currOffset = 0; title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break;
-            case 263: if (currLength>1) { mvprintw(0, 22+currLength, " "); title[currLength] = '\0'; --currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } else if (currLength==1) { --currLength; clrtobot(); } break;
+            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<15) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break;
+            case 263: if (currLength>1) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } else if (currLength==1) { title[currLength] = '\0'; --currLength; mvprintw(0, 23, " "); clrtobot(); } break;
             case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
             case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
             case 331: { newOptionEntry(title, currLength); getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
-            case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title, currLength); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } break; }
+            case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } break; }
             case 330: { endwin(); return 0; }
+            case 4: { removeOption(entryIds[currSelected]); currSelected = 0; currOffset = 0; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
+            case 5: { editEntry(currSelected, currLength); break; }
             default:  break;
         }
         move(0, 23+currLength);
