@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <ncurses.h>
@@ -159,28 +160,37 @@ int getFound(char title[16], int length, int* showEntries)
     clrtobot();
     int found = 1, qtyFound = 0;
     free(showEntries);
-    showEntries = malloc(4);
-    for (int i = 0; i < entryCnt; ++i)
-    {
-        for (int x = 0; x < 16; ++x)
-        {
-            if (db[i].title[x]==title[0]||switchCases(db[i].title[x])==title[0])
-            {
-                for (int o = 0; o < length; ++o)
-                {
-                    if ((db[i].title[x+o]!=title[o])&&(switchCases(db[i].title[x+o])!=title[o])) found = 0;
-                }
-                if (found&&!contains(showEntries, qtyFound, i))
-                {
-                    if (qtyFound>0) showEntries = realloc(showEntries, sizeof(int)*(qtyFound+1));
-                    showEntries[qtyFound] = i;
-                    ++qtyFound;
-                }
-                found = 1;
-            }
-        }
-    }
-    return qtyFound;
+	if (length)
+	{
+		showEntries = malloc(4);
+		for (int i = 0; i < entryCnt; ++i)
+		{
+			for (int x = 0; x < 16; ++x)
+			{
+				if (db[i].title[x]==title[0]||switchCases(db[i].title[x])==title[0])
+				{
+					for (int o = 0; o < length; ++o)
+					{
+						if ((db[i].title[x+o]!=title[o])&&(switchCases(db[i].title[x+o])!=title[o])) found = 0;
+					}
+					if (found&&!contains(showEntries, qtyFound, i))
+					{
+						if (qtyFound>0) showEntries = realloc(showEntries, sizeof(int)*(qtyFound+1));
+						showEntries[qtyFound] = i;
+						++qtyFound;
+					}
+					found = 1;
+				}
+			}
+		}
+		return qtyFound;
+	}
+	showEntries = malloc(4*entryCnt);
+	for (int i = 0; i<entryCnt; ++i)
+	{
+		showEntries[i] = i;
+	}
+	return entryCnt;
 }
 
 void rewriteDb()
@@ -360,16 +370,16 @@ int main()
     int lenFound = 0, currSelected = 0; // currSelected - current selected
     int currOffset = 0; // quantity of entries scrolled; from what entry to start displaying
     int* entryIds = malloc(4);
-
+	lenFound = getFound(title, 0, entryIds);
+	printFound(entryIds, 0, lenFound);
+	highlightOption(0);
+	move(0, 23);
     while(ch=getch())
     {
         switch (ch)
-        {
-            case 'a'...'z':
-            case 'A'...'Z':
-            case '0'...'9':
-            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<15) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break;
-            case 263: if (currLength>1) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } else if (currLength==1) { title[currLength] = '\0'; --currLength; mvprintw(0, 23, " "); clrtobot(); } break;
+		{
+			case 32 ... 126: { if(currLength<15) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break; }
+            case 263: if (currLength>0) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } break;
             case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
             case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
             case 331: { newOptionEntry(title, currLength); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }

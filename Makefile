@@ -6,3 +6,6 @@ install:
 
 clean:
 	sudo rm -rf /usr/bin/noteapp
+
+debug:
+	cc src/main.c -lncurses -o noteapp-debug -D DB_LOCATION=\"${HOME}/.notedb\" -g
