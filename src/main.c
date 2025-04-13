@@ -282,10 +282,7 @@ void newOptionEntry(char title[16], int posToReturn)
     {
         switch (ch)
         {
-            case 'a'...'z':
-            case 'A'...'Z':
-            case '0'...'9':
-            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currIndex<128) { mvprintw(3, 16+currIndex, "%c", ch); entry[currIndex] = ch; ++currIndex; } break;
+			case 32 ... 126: if(currIndex<128) { mvprintw(3, 16+currIndex, "%c", ch); entry[currIndex] = ch; ++currIndex; } break;
             case 263: if (currIndex>0) { entry[--currIndex] = ' '; mvprintw(3, 16+currIndex, " "); } break;
         }
         move(3, 16+currIndex);
@@ -305,10 +302,7 @@ void editEntry(int id, int posToReturn)
     {
         switch (ch)
         {
-            case 'a'...'z':
-            case 'A'...'Z':
-            case '0'...'9':
-            case ' ': case '.': case ',': case '/': case '"': case ':': case '<': case '>': case '-': case '_': case '+': case '=': if(currLength<128) { mvprintw(3, 16+currLength, "%c", ch); db[id].entry[++currLength] = ch; } break;
+			case 32 ... 126: if(currLength<128) { mvprintw(3, 16+currLength, "%c", ch); db[id].entry[++currLength] = ch; } break;
             case 263: if (currLength>0) { db[id].entry[currLength--] = ' '; mvprintw(3, 16+currLength, " "); } break;
         }
         move(3, 16+currLength);
