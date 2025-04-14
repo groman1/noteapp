@@ -10,10 +10,18 @@
 #define DB_LOCATION ".notedb"
 #endif
 
+#ifndef TITLESIZE 
+#define TITLESIZE 16
+#endif
+
+#ifndef ENTRYSIZE
+#define ENTRYSIZE 128
+#endif
+
 struct Entry
 {
-    char title[16];
-    char entry[128];
+    char title[TITLESIZE];
+    char entry[ENTRYSIZE];
     time_t time;
 };
 
@@ -25,7 +33,7 @@ struct Entry* db;
 void highlightOption(int offset)
 {
     attron(COLOR_PAIR(1));
-    for (int i = 0; i<16; ++i)
+    for (int i = 0; (i<TITLESIZE)&&(i<MAXX); ++i)
     {
         if (mvinch(2+offset*4, i)==' ') continue;
         mvprintw(2+offset*4, i, "%c", mvinch(2+offset*4, i));
@@ -36,7 +44,7 @@ void highlightOption(int offset)
 void unhighlightOption(int offset)
 {
     attron(COLOR_PAIR(2));
-    for (int i = 0; i<16; ++i)
+    for (int i = 0; (i<TITLESIZE)&&(i<MAXX); ++i)
     {
         if (mvinch(2+offset*4, i)==' ') continue;
         mvprintw(2+offset*4, i, "%c", mvinch(2+offset*4, i));
@@ -155,7 +163,7 @@ char switchCases(char input)
     }
 }
 
-int getFound(char title[16], int length, int* showEntries)
+int getFound(char title[TITLESIZE], int length, int* showEntries)
 {
     clrtobot();
     int found = 1, qtyFound = 0;
@@ -165,7 +173,7 @@ int getFound(char title[16], int length, int* showEntries)
 		showEntries = malloc(4);
 		for (int i = 0; i < entryCnt; ++i)
 		{
-			for (int x = 0; x < 16; ++x)
+			for (int x = 0; x < TITLESIZE; ++x)
 			{
 				if (db[i].title[x]==title[0]||switchCases(db[i].title[x])==title[0])
 				{
@@ -199,7 +207,7 @@ void rewriteDb()
     assert(dbFile = fopen(DB_LOCATION, "w"));
     for (int e = 0; e < entryCnt; ++e)
     {
-        for (int i = 0; i < 16; ++i)
+        for (int i = 0; i < TITLESIZE; ++i)
         {
             if (db[e].title[i]=='\n')
             {
@@ -221,7 +229,7 @@ void rewriteDb()
             }
         }
         fputc('"', dbFile);
-        for (int i = 0; i < 128; ++i)
+        for (int i = 0; i < ENTRYSIZE; ++i)
         {
             if (db[e].entry[i]=='\n')
             {
@@ -254,15 +262,15 @@ void rewriteDb()
     fflush(dbFile);
 }
 
-void newOption(char title[16], char entry[128], time_t time)
+void newOption(char title[TITLESIZE], char entry[ENTRYSIZE], time_t time)
 {
     db = realloc(db, sizeof(struct Entry)*(entryCnt+1));
-    for (int i = 0; i < 16; ++i)
+    for (int i = 0; i < TITLESIZE; ++i)
     {
         if(title[i]=='\0') break;
         db[entryCnt].title[i] = title[i];
     }
-    for (int i = 0; i < 128; ++i)
+    for (int i = 0; i < ENTRYSIZE; ++i)
     {
         if(entry[i]=='\0') break;
         db[entryCnt].entry[i] = entry[i];
@@ -272,20 +280,20 @@ void newOption(char title[16], char entry[128], time_t time)
     rewriteDb();
 }
 
-void newOptionEntry(char title[16], int posToReturn)
+void newOptionEntry(char title[TITLESIZE], int posToReturn)
 {
     clrtobot();
     int ch, currIndex = 0;
-    char entry[128];
+    char entry[ENTRYSIZE];
     mvprintw(3, 0, "Enter the text: ");
     while((ch=getch())!=10) //enter
     {
         switch (ch)
         {
-			case 32 ... 126: if(currIndex<128) { mvprintw(3, 16+currIndex, "%c", ch); entry[currIndex] = ch; ++currIndex; } break;
-            case 263: if (currIndex>0) { entry[--currIndex] = ' '; mvprintw(3, 16+currIndex, " "); } break;
+			case 32 ... 126: if(currIndex<ENTRYSIZE) { mvprintw(3, TITLESIZE+currIndex, "%c", ch); entry[currIndex] = ch; ++currIndex; } break;
+            case 263: if (currIndex>0) { entry[--currIndex] = ' '; mvprintw(3, TITLESIZE+currIndex, " "); } break;
         }
-        move(3, 16+currIndex);
+        move(3, TITLESIZE+currIndex);
     }
     entry[currIndex] = '\0';
     newOption(title, entry, time(NULL)); //add time here
@@ -302,7 +310,7 @@ void editEntry(int id, int posToReturn)
     {
         switch (ch)
         {
-			case 32 ... 126: if(currLength<128) { mvprintw(3, 16+currLength, "%c", ch); db[id].entry[++currLength] = ch; } break;
+			case 32 ... 126: if(currLength<ENTRYSIZE) { mvprintw(3, 16+currLength, "%c", ch); db[id].entry[++currLength] = ch; } break;
             case 263: if (currLength>0) { db[id].entry[currLength--] = ' '; mvprintw(3, 16+currLength, " "); } break;
         }
         move(3, 16+currLength);
@@ -314,7 +322,7 @@ void editEntry(int id, int posToReturn)
     clrtobot();
 }
 
-void browseEntry(int id, char searchText[16])
+void browseEntry(int id, char searchText[TITLESIZE])
 {
     clear();
     for (int i = 0; i<MAXX-2; ++i)
@@ -359,7 +367,7 @@ int main()
 
     printw("Enter the search name: ");
     int ch;
-    char title[16];
+    char title[TITLESIZE];
     int currLength = 0;
     int lenFound = 0, currSelected = 0; // currSelected - current selected
     int currOffset = 0; // quantity of entries scrolled; from what entry to start displaying
@@ -372,7 +380,7 @@ int main()
     {
         switch (ch)
 		{
-			case 32 ... 126: { if(currLength<15) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break; }
+			case 32 ... 126: { if(currLength<TITLESIZE-1) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break; }
             case 263: if (currLength>0) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } break;
             case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
             case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
