@@ -163,11 +163,11 @@ char switchCases(char input)
     }
 }
 
-int getFound(char title[TITLESIZE], int length, int* showEntries)
+int *getFound(char title[TITLESIZE], int length, int *qtyF)
 {
     clrtobot();
     int found = 1, qtyFound = 0;
-    free(showEntries);
+	int *showEntries;
 	if (length)
 	{
 		showEntries = malloc(4);
@@ -191,20 +191,22 @@ int getFound(char title[TITLESIZE], int length, int* showEntries)
 				}
 			}
 		}
-		return qtyFound;
+		*qtyF = qtyFound;
+		return showEntries;
 	}
 	showEntries = malloc(4*entryCnt);
 	for (int i = 0; i<entryCnt; ++i)
 	{
 		showEntries[i] = i;
 	}
-	return entryCnt;
+	*qtyF = entryCnt;
+	return showEntries;
 }
 
 void rewriteDb()
 {
     fclose(dbFile);
-    assert(dbFile = fopen(DB_LOCATION, "w"));
+    dbFile = fopen(DB_LOCATION, "w");
     for (int e = 0; e < entryCnt; ++e)
     {
         for (int i = 0; i < TITLESIZE; ++i)
@@ -367,12 +369,12 @@ int main()
 
     printw("Enter the search name: ");
     int ch;
-    char title[TITLESIZE];
+    char title[TITLESIZE] = "";
     int currLength = 0;
     int lenFound = 0, currSelected = 0; // currSelected - current selected
     int currOffset = 0; // quantity of entries scrolled; from what entry to start displaying
     int* entryIds = malloc(4);
-	lenFound = getFound(title, 0, entryIds);
+	entryIds = getFound(title, 0, &lenFound);
 	printFound(entryIds, 0, lenFound);
 	highlightOption(0);
 	move(0, 23);
@@ -380,15 +382,15 @@ int main()
     {
         switch (ch)
 		{
-			case 32 ... 126: { if(currLength<TITLESIZE-1) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break; }
-            case 263: if (currLength>0) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } break;
-            case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
-            case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
-            case 331: { newOptionEntry(title, currLength); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
-            case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title); lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } break; }
+			case 32 ... 126: { if(currLength<TITLESIZE-1) { currSelected = 0; currOffset = 0; mvprintw(0, 23+currLength, "%c", ch); title[currLength] = ch; ++currLength; entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(0); } break; }
+            case 263: if (currLength>0) { mvprintw(0, 23+(--currLength), " "); title[currLength] = '\0'; entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(0);  } break;
+            case 258: { if ((currSelected<MAXENTRIES-1)&&(currSelected<lenFound-1)) { unhighlightOption(currSelected); highlightOption(++currSelected); } else { if (currOffset<lenFound-MAXENTRIES) { ++currOffset; entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } } break; } 
+            case 259: { if (currSelected>0) { unhighlightOption(currSelected); highlightOption(--currSelected); } else { if (currOffset>0) { --currOffset; entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(currOffset); } } break; }
+            case 331: { newOptionEntry(title, currLength); entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
+            case 10:  { if(lenFound) { browseEntry(entryIds[currSelected], title); entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(currSelected); } break; }
             case 330: { endwin(); return 0; }
-            case 4: { removeOption(entryIds[currSelected]); currSelected = 0; currOffset = 0; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
-            case 5: { editEntry(currSelected, currLength); currSelected = 0; currOffset = 0; lenFound = getFound(title, currLength, entryIds); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
+            case 4: { removeOption(entryIds[currSelected]); currSelected = 0; currOffset = 0; entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
+            case 5: { editEntry(currSelected, currLength); currSelected = 0; currOffset = 0; entryIds = getFound(title, currLength, &lenFound); printFound(entryIds, currOffset, lenFound); highlightOption(0); break; }
             default:  break;
         }
         move(0, 23+currLength);
